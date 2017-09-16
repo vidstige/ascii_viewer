@@ -10,11 +10,8 @@ module.exports = {
     filename: "[name].js"
   },
   devServer: {
-    proxy: {
-      '/api/**': {
-        target: 'http://localhost:5000/',
-        secure: false
-      }
+    watchOptions: {
+      ignored: "/node_modules/"
     },
     inline: true
   }
