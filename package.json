@@ -1,0 +1,11 @@
+{
+  "name": "ascii-viewer",
+  "version": "1.0.0",
+  "description": "Displays mesh using aalib",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Samuel Carlsson <samuel.carlsson@gmail.com>",
+  "license": "ISC"
+}
