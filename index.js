@@ -2,6 +2,9 @@ const THREE = require('three');
 require('three-obj-loader')(THREE);
 var OrbitControls = require('three-orbit-controls')(THREE);
 
+const aalib = require('aalib.js');
+
+
 var container;
             
 var camera, scene, renderer, controls;
@@ -10,6 +13,8 @@ var mouseX = 0, mouseY = 0;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
+
+var backBuffer;
 
 init();
 //animate();
@@ -78,10 +83,14 @@ function init() {
     }, manager.onProgress, console.error);
 
     //
+    backBuffer = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+
+
+    //
     renderer = new THREE.WebGLRenderer();
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
+    //container.appendChild(renderer.domElement);
 
     document.addEventListener('mousemove', onDocumentMouseMove, false);
 
@@ -111,6 +120,98 @@ function animate() {
     render();
 }
 
+var pixelBuffer = new Uint8Array(window.innerWidth*window.innerHeight*4);
 function render() {
+    renderer.render(scene, camera, backBuffer);
+    renderer.readRenderTargetPixels(backBuffer, 0, 0, window.innerWidth, window.innerHeight, pixelBuffer);
+
     renderer.render(scene, camera);
 }
+
+
+///////////////////////
+class Stream {
+
+    constructor() {
+        this.clear();
+    }
+
+    write(data) {
+        this.initialData = data;
+
+        if (this.ready && this.sink.length) {
+            this.run();
+        }
+
+        return this;
+    }
+
+    run() {
+        this.data = this.initialData;
+
+        this.sink.forEach((fn) => {
+            this.data = fn(this.data);
+        });
+
+        return this;
+    }
+
+    end() {
+        this.ready = true;
+
+        if (this.initialData) {
+            this.run();
+        }
+
+        return this;
+    }
+
+    pipe(fn) {
+        this.sink.push(fn);
+
+        return this;
+    }
+
+    clear() {
+        this.sink = [];
+        this.data = null;
+        this.initialData = null;
+        this.ready = false;
+
+        return this;
+    }
+}
+
+class Reader {
+    constructor() {
+        this.stream = new Stream();
+    }
+
+    onRead(stream, error) {
+        void stream; void error;
+    }
+
+    read() {
+        this.onRead(
+            this.stream.write.bind(this.stream),
+            this.error.bind(this)
+        );
+
+        return this.stream;
+    }
+
+    error(msg) {
+        this.stream.clear();
+        throw msg;
+    }
+}
+
+
+aalib.read.image.fromURL("marylin.jpg")
+    .pipe(aalib.aa({ width: 160, height: 80, colorful: true }))
+    .pipe(aalib.filter.inverse())
+    .pipe(aalib.render.html())
+    .pipe(function (el) {
+        document.body.appendChild(el);
+    })
+    .end();
